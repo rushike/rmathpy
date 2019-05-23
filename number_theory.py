@@ -6,6 +6,30 @@ import array
 import math, random
 import itertools, functools, operator
 
+def length(n):#return bits in integer 'n'
+    return int(math.log2(n) + 1)
+def up(n_b, base = 2):
+    return base ** int(math.log2(n_b) / math.log2(base) + 1)
+    
+def split(n, t): #Splits 'n' integer in t integer of bits bit(n)/t
+    n_b = length(n)
+    print("n : ", n, ", n_b : ", n_b)
+    sbit = up(n_b) // t
+    wrapper = 2 ** sbit - 1
+    k = n
+    li = []
+    while k:
+        li.append(k & wrapper)
+        k >>= sbit
+    return li
+
+def merge(a, b, *nums, block_size = 16):#Merge the numbers in order
+    WRAPPER = (1 << block_size) - 1
+    num = ((a & WRAPPER) << block_size) + (b & WRAPPER)
+    for v in nums:
+        num = (num << block_size) + (v & WRAPPER)
+    return num
+
 def absolute(n) :
     if n < 0 :
         return -1 * n
