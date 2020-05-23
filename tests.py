@@ -1,0 +1,1 @@
+from rmath.tests import *
