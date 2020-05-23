@@ -1,4 +1,6 @@
+from collections.abc import Iterable
 import numpy
+
 
 def get_input_for_optimizer_fn(x):
     """x may be int, float, array, tuple
@@ -9,8 +11,8 @@ def get_input_for_optimizer_fn(x):
     Returns:
         [numpy.ndarray] -- [description]
     """
-    if isinstance(x, int) or isinstance(x, float):
+    if not isinstance(x, Iterable):
         return numpy.array([x])
-    if isinstance(x, tuple) or isinstance(x, list) or isinstance(x, numpy.ndarray):
-        return numpy.array(x)
-    return None
+    else:
+        return numpy.array(x)    
+    

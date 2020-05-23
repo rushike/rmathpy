@@ -20,7 +20,7 @@ class Adam:
     def __init__(self, fn = None, N = 1, params = {}):
         """Optimizer parameters, default from research
         """
-        self.alpha = params.get("alpha", 0.01)
+        self.alpha = params.get("alpha", 0.1)
         self.beta_1 = params.get("beta_1", 0.9)
         self.beta_2 = params.get("beta_2", 0.999)
         self.epsilon = params.get("epsilon", 1e-8)
@@ -44,25 +44,33 @@ class Adam:
         self.N = len(x)
             
     def fn_g(self, x, h = 0.5):
+        # l = []
+        # for x_ in x:
+        #     print(self.fn, x_, h)
+        #     d = differentiate(self.fn, (x), h = h)
+        #     print(d)
+        #     l.push(d)
+        # print(f"fn_g : x : {x}, gt = [{[differentiate(self.fn, x_, h = h) for x_ in x]}]")
+        # return numpy.array()
         return differentiate(self.fn, x, h = h)
 
     def apply(self):
         """
         Vectors(numpy.ndarray) to use on start
         """
-        x   = numpy.array(self.x)						                        #initialize the vector
-        m_t = numpy.zeros(self.N) 
-        v_t = numpy.zeros(self.N) 
+        x   = numpy.array(self.x, dtype='float')						                        #initialize the vector
+        m_t = numpy.zeros(self.N, dtype='float') 
+        v_t = numpy.zeros(self.N, dtype='float') 
         t = 0
 
         while True:					                                                # till it gets converged
             t += 1
-            g_t = self.fn_g(x)		                                                # computes the gradient of the stochastic function
+            g_t = self.fn_g(x)		                                                # computes the gradient of the stochastic function            
             m_t = self.beta_1 * m_t + (1 - self.beta_1) * g_t	                    # updates the moving averages of the gradient
             v_t = self.beta_2 * v_t + (1 - self.beta_2) * (g_t * g_t)	            # updates the moving averages of the squared gradient
             m_cap = m_t / (1 - (self.beta_1 ** t))		                            # calculates the bias-corrected estimates
             v_cap = v_t / (1 - (self.beta_2 ** t))		                            # calculates the bias-corrected estimates
-            x_prev = x            
+            x_prev = x
             x = x - (self.alpha * m_cap) / (numpy.sqrt(v_cap) + self.epsilon)	    # updates the parameters            
             if self.__stop(x, x_prev):		                                        # checks if it is converged or not
                 break
