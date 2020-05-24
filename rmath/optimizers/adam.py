@@ -4,6 +4,7 @@ import itertools
 
 from rmath.calculus.continuous import differentiate
 from .utils import get_input_for_optimizer_fn
+from .base import BaseOptimizer
 
 def fn(x : numpy.ndarray):
     x = get_input_for_optimizer_fn(x)
@@ -16,20 +17,26 @@ def fn_g(x : int, order = 1):
 import math
 
 
-class Adam:
-    def __init__(self, fn = None, N = 1, params = {}):
-        """Optimizer parameters, default from research
-        """
-        self.alpha = params.get("alpha", 0.1)
+class Adam(BaseOptimizer):
+    def __init__(self, fn = None, params = {}, **kwargs):
+        ########################################################################
+        # Adam parameters                                                      #
+        ########################################################################
+        self.alpha = params.get("alpha", 0.01)
         self.beta_1 = params.get("beta_1", 0.9)
         self.beta_2 = params.get("beta_2", 0.999)
         self.epsilon = params.get("epsilon", 1e-8)
         
-        self.fn = fn   # function to optimize
-        self.x  = None # initial parameters to start
-        self.N  = N    # number of parameters
-        self.e  = 0.001
-        self.t  = 0
+        ########################################################################
+        # Non Adam parameters                                                  #
+        ########################################################################
+        self.fn     = fn                                    # function to optimize
+        self.x      = kwargs.get("x", numpy.array([0]))     # initial parameters to start
+        self.N      = len(self.x)                           # number of parameters
+        self.h      = kwargs.get("h", numpy.array([0.1]))   # neighbourhood used to calculate the derivative
+        self.fn_g   = self.fn_g_
+        self.t      = 0                                     # loop counter    
+        self.T      = kwargs.get("T", 1000)                 # stop the loop if iteration exceeds T, even if convergence is not reached
 
     def set_fn(self, fn):
         self.fn = fn
@@ -39,19 +46,22 @@ class Adam:
             if isinstance(x[0], tuple) or isinstance(x[0], list):
                 self.x = numpy.array(x[0])
                 self.N = len(x[0])
+                h_ = numpy.array([self.h[0] for _ in range(self.N)])
+                self.h = h_
                 return
         self.x = numpy.array(x)
-        self.N = len(x)
+        self.N = len(self.x)
+        h_ = numpy.array([self.h[0] for _ in range(self.N)])
+        self.h = h_
             
-    def fn_g(self, x, h = 0.5):
-        # l = []
-        # for x_ in x:
-        #     print(self.fn, x_, h)
-        #     d = differentiate(self.fn, (x), h = h)
-        #     print(d)
-        #     l.push(d)
-        # print(f"fn_g : x : {x}, gt = [{[differentiate(self.fn, x_, h = h) for x_ in x]}]")
-        # return numpy.array()
+    def set_fn_g(self, fn_g):
+        self.fn_g = fn_g
+    
+    def set_neighbourhood(self, h : numpy.ndarray):
+        if len(h) != self.N: raise AttributeError(f"Neighbourhood and set, length mismath, len(h)@[{len(h)}] != self.N@[{self.N}]")        
+        self.h = numpy.array(h)
+
+    def fn_g_(self, x, h = 0.5):        
         return differentiate(self.fn, x, h = h)
 
     def apply(self):
@@ -63,7 +73,7 @@ class Adam:
         v_t = numpy.zeros(self.N, dtype='float') 
         t = 0
 
-        while True:					                                                # till it gets converged
+        while t < self.T:					                                                # till it gets converged
             t += 1
             g_t = self.fn_g(x)		                                                # computes the gradient of the stochastic function            
             m_t = self.beta_1 * m_t + (1 - self.beta_1) * g_t	                    # updates the moving averages of the gradient
@@ -72,14 +82,28 @@ class Adam:
             v_cap = v_t / (1 - (self.beta_2 ** t))		                            # calculates the bias-corrected estimates
             x_prev = x
             x = x - (self.alpha * m_cap) / (numpy.sqrt(v_cap) + self.epsilon)	    # updates the parameters            
-            if self.__stop(x, x_prev):		                                        # checks if it is converged or not
+            if self.__stop(x, x_prev) and t > 25:		                                        # checks if it is converged or not
                 break
         self.t = t
         return x
 
     def __stop(self, x : numpy.ndarray, x_prev : numpy.ndarray):
-        if len(x.shape) != len(x_prev.shape) or len(x.shape) > 1 : raise AttributeError(f"x.shape({x.shape}), x_prev.shape({x_prev.shape})  miss matching or not equal to one")
-        return abs(sum(x - x_prev) / x.shape[0]) < self.e
+        if len(x.shape) != len(x_prev.shape) or len(x.shape) > 1 or len(x) > len(self.h) : raise AttributeError(f"x.shape({x.shape}), x_prev.shape({x_prev.shape})  miss matching or not equal to one")
+        for a, b, c in zip(x, x_prev, self.h):
+            if abs(a - b) > c : return False
+        return True
 
     def __str__(self):
-        return "Adam Optimizer@{}".format(id(self))
+        return self.__repr__()
+    
+    def __repr__(self):
+        return super().__str__(
+                    classname="Adam Optimizer@{}".format(id(self)), 
+                    add_attr = {
+                            "-"         : True,
+                            "alpha"     : self.alpha,
+                            "beta_1"    : self.beta_1,
+                            "beta_2"    : self.beta_2,
+                            "epsilon"   : self.epsilon,
+                        }
+                )
